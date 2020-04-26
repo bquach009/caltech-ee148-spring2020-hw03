@@ -7,6 +7,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data.sampler import SubsetRandomSampler
+import numpy as np
 
 import os
 
@@ -197,8 +198,23 @@ def main():
     # training by using SubsetRandomSampler. Right now the train and validation
     # sets are built from the same indices - this is bad! Change it so that
     # the training and validation sets are disjoint and have the correct relative sizes.
-    subset_indices_train = range(len(train_dataset))
-    subset_indices_valid = range(len(train_dataset))
+    subset_indices_train = []
+    subset_indices_valid = []
+    
+    # Get list of indices based on class
+    classes = {}
+    for i in range(len(train_dataset)):
+        y = train_dataset[i][1]
+        if y not in classes:
+            classes[y] = [i]
+        else:
+            classes[y].append(i)
+    # Randomly sample 85% of each set of classes for training 
+    for key in classes:
+        idx = classes[key]
+        idx = np.random.permutation(idx)
+        subset_indices_train.extend(idx[:round(0.85*len(idx))])
+        subset_indices_valid.extend(idx[round(0.85*len(idx)):])
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size,
