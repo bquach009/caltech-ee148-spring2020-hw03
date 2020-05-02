@@ -277,45 +277,47 @@ def main():
         subset_indices_train = np.load("train_idx.npy")
         subset_indices_valid = np.load("valid_idx.npy")
     
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size,
-        sampler=SubsetRandomSampler(subset_indices_train)
-    )
-    val_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.test_batch_size,
-        sampler=SubsetRandomSampler(subset_indices_valid)
-    )
+    for portion in [1/16, 1/8, 1/4, 1/2]:
+        curr_train_indices = np.random.choice(subset_indices_train, round(portion*len(subset_indices_train)), replace=False)
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=args.batch_size,
+            sampler=SubsetRandomSampler(curr_train_indices)
+        )
+        val_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=args.test_batch_size,
+            sampler=SubsetRandomSampler(subset_indices_valid)
+        )
 
-    # Load your model [fcNet, ConvNet, Net]
-    model = Net().to(device)
+        # Load your model [fcNet, ConvNet, Net]
+        model = Net().to(device)
 
-    # Try different optimzers here [Adam, SGD, RMSprop]
-    optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
+        # Try different optimzers here [Adam, SGD, RMSprop]
+        optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
-    # Set your learning rate scheduler
-    scheduler = StepLR(optimizer, step_size=args.step, gamma=args.gamma)
+        # Set your learning rate scheduler
+        scheduler = StepLR(optimizer, step_size=args.step, gamma=args.gamma)
 
-    # Training loop
-    train_losses = []
-    test_losses = []
-    for epoch in range(1, args.epochs + 1):
-        train_loss = train(args, model, device, train_loader, optimizer, epoch)
-        test_loss = test(model, device, val_loader)
-        train_losses.append(train_loss)
-        test_losses.append(test_loss)
-        scheduler.step()    # learning rate scheduler
+        # Training loop
+        train_losses = []
+        test_losses = []
+        for epoch in range(1, args.epochs + 1):
+            train_loss = train(args, model, device, train_loader, optimizer, epoch)
+            test_loss = test(model, device, val_loader)
+            train_losses.append(train_loss)
+            test_losses.append(test_loss)
+            scheduler.step()    # learning rate scheduler
 
-    # You may optionally save your model at each epoch here
-    np.save("train_loss.npy", np.array(train_losses))
-    np.save("test_loss.npy", np.array(test_losses))
-    
-    print("Final Performance!")
-    print("Validation Set:")
-    test(model, device, val_loader)
-    print("Training Set:")
-    test(model, device, train_loader)
-    if args.save_model:
-        torch.save(model.state_dict(), "models/mnist_model_better.pt")
+        # You may optionally save your model at each epoch here
+        np.save("train_loss.npy", np.array(train_losses))
+        np.save("test_loss.npy", np.array(test_losses))
+        
+        print("Final Performance!")
+        print("Validation Set:")
+        test(model, device, val_loader)
+        print("Training Set:")
+        test(model, device, train_loader)
+        if args.save_model:
+            torch.save(model.state_dict(), "models/mnist_model_{}.pt".format(portion))
 
 
 if __name__ == '__main__':
